@@ -11,61 +11,52 @@ async function getGraphQLData() {
   var day = dateObj.getUTCDate();
   var year = dateObj.getUTCFullYear();
 
-  // Query for the GraphQL Api for getting the food menu
   const query = `
-        site0: menuType(id: "5d13bb11534a134661b51588") {
+    site0: menuType(id: "5d13bb11534a134661b51588") {
+      name
+      items(start_date: "${month}/${day}/${year}", end_date: "${month}/${day}/${year}") {
+        product {
           name
-          items(start_date: "${month}/${day}/${year}", end_date: "${month}/${day}/${year}") {
-            product {
-              name
-            }
-          }
         }
-        site1: menuType(id: "5d011496534a13a13b2dff32") {
+      }
+    }
+    site1: menuType(id: "5d011496534a13a13b2dff32") {
+      name
+      items(start_date: "${month}/${day}/${year}", end_date: "${month}/${day}/${year}") {
+        product {
           name
-          items(start_date: "${month}/${day}/${year}", end_date: "${month}/${day}/${year}") {
-            product {
-              name
-            }
-          }
         }
-    `;
+      }
+    }
+  `;
 
-  // Fetch request from the GraphQL Api for requesting the data
   await fetch(GraphQLAPI, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({
-      query,
-    }),
+    body: JSON.stringify({ query }),
   })
     .then((response) => response.json())
     .then((data) => {
-      let breakfastUnfiltered = data.data.site0.items || []; // Default to empty array if undefined
-      let lunchUnfiltered = data.data.site1.items || [];    // Default to empty array if undefined
+      let breakfastUnfiltered = data.data.site0.items || [];
+      let lunchUnfiltered = data.data.site1.items || [];
 
-      // Deletes "or" from breakfast Object
       breakfastUnfiltered = breakfastUnfiltered.filter(item => item && item.product.name !== "or");
-
-      // Deletes "or" from lunch Object
       lunchUnfiltered = lunchUnfiltered.filter(item => item && item.product.name !== "or");
 
-      // Displays nothing on the menu if both are empty
       if (breakfastUnfiltered.length === 0 && lunchUnfiltered.length === 0) {
         breakfastUnfiltered = [{ product: { name: "Nothing on the menu!" } }];
         lunchUnfiltered = [{ product: { name: "Nothing on the menu!" } }];
       }
 
-      // Stores and new organized data
       const deploymentReadyData = {
         breakfast: breakfastUnfiltered,
         lunch: lunchUnfiltered,
       };
 
-      updateDB(deploymentReadyData); // Update the database with current menu
+      updateDB(deploymentReadyData);
     });
 }
 
@@ -74,7 +65,7 @@ async function updateDB(GraphQLData) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "api-key": process.env.API_KEY, // Add API key for authentication
+      "api-key": process.env.API_KEY,
     },
     body: JSON.stringify(GraphQLData),
   };
@@ -85,5 +76,4 @@ async function updateDB(GraphQLData) {
     .catch((error) => console.error("Update failed:", error));
 }
 
-// Runs the main function
 getGraphQLData().catch(console.error);
