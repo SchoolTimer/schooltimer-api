@@ -6,3 +6,4 @@ test-server.js
 populate-db.js
 test-python-scraper.py
 venv/
+.gitignore
