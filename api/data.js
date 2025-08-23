@@ -9,7 +9,12 @@ module.exports = async (req, res) => {
     const foodmenu = await db.collection('foodmenus').findOne({ _id: 'current' }) || { breakfast: [], lunch: [] };
     res.status(200).json({ daycycle, foodmenu });
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('MongoDB Error in /api/data:', err);
+    res.status(500).json({ 
+      error: 'Server error', 
+      details: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
+      timestamp: new Date().toISOString()
+    });
   } finally {
     await client.close();
   }

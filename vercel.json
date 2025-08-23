@@ -6,6 +6,7 @@
       { "src": "scrapers/foodmenu.js", "use": "@vercel/node" }
     ],
     "routes": [
+      { "src": "/api/test", "dest": "/api/test.js" },
       { "src": "/api/daycycle", "dest": "/api/daycycle.js" },
       { "src": "/api/foodmenu", "dest": "/api/foodmenu.js" },
       { "src": "/api/data", "dest": "/api/data.js" }

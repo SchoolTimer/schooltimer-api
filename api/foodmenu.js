@@ -23,7 +23,12 @@ module.exports = async (req, res) => {
       res.status(403).json({ error: 'Invalid API key' });
     }
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('MongoDB Error in /api/foodmenu:', err);
+    res.status(500).json({ 
+      error: 'Server error', 
+      details: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
+      timestamp: new Date().toISOString()
+    });
   } finally {
     await client.close();
   }
