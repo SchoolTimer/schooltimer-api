@@ -7,7 +7,7 @@
     ],
     "routes": [
       { "src": "/api/data", "dest": "/api/supabase-data.js" },
-      { "src": "/api/foodmenu", "dest": "/api/supabase-foodmenu.js" },
+      { "src": "/api/foodmenu", "dest": "/api/supabase-foodmenu.js" }
     ],
     "crons": [
       { "path": "/scrapers/daycycle.py", "schedule": "0 8 * * *" },
