@@ -1,9 +1,5 @@
 package-lock.json
 node_modules
 .env
-test-scraper.js
-test-server.js
-populate-db.js
-test-python-scraper.py
 venv/
 .gitignore
