@@ -15,7 +15,12 @@ module.exports = async (req, res) => {
         version: ServerApiVersion.v1,
         strict: true,
         deprecationErrors: true,
-      }
+      },
+      tls: true, // Explicitly enable TLS
+      tlsCAFile: undefined, // Optional: Use if you have a custom CA certificate
+      minPoolSize: 1,
+      maxPoolSize: 10,
+      connectTimeoutMS: 30000 // Increase timeout to debug connection issues
     });
     
     debugInfo.step = 'connecting to mongodb';
