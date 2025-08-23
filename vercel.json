@@ -2,7 +2,7 @@
     "version": 2,
     "builds": [
       { "src": "api/**/*.js", "use": "@vercel/node" },
-      { "src": "scrapers/daycycle.py", "use": "@vercel/python" },
+      { "src": "scrapers/daycycle.py", "use": "@vercel/python", "config": { "runtime": "python3.9" } },
       { "src": "scrapers/foodmenu.js", "use": "@vercel/node" }
     ],
     "routes": [

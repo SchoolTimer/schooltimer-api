@@ -43,7 +43,7 @@ final2 = results[tomorrow]
 final3 = results[day_after_tomorrow]
 
 # Push data to Vercel API
-api_url = os.environ.get('DAYCYCLE_UPDATE_API')  # e.g., 'https://schooltimer-api.vercel.app/api/daycycle'
+api_url = os.environ.get('DAYCYCLE_UPDATE_API')
 api_key = os.environ.get('API_KEY')
 payload = {
     'today': final1,

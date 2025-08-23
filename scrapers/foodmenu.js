@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 import fetch from "node-fetch";
 
-const FOODMENU_UPDATE_API = process.env.FOODMENU_UPDATE_API; // e.g., 'https://schooltimer-api.vercel.app/api/foodmenu'
+const FOODMENU_UPDATE_API = process.env.FOODMENU_UPDATE_API;
 const GraphQLAPI = process.env.FOOD_MENU_GRAPHQL_API;
 
 async function getGraphQLData() {
