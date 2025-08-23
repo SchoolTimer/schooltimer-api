@@ -1,4 +1,4 @@
-const { MongoClient } = require('mongodb');
+const { MongoClient, ServerApiVersion } = require('mongodb');
 
 module.exports = async (req, res) => {
   const debugInfo = {
@@ -12,13 +12,10 @@ module.exports = async (req, res) => {
     debugInfo.step = 'creating client';
     const client = new MongoClient(process.env.MONGODB_URI, {
       serverApi: {
-        version: '1',
+        version: ServerApiVersion.v1,
         strict: true,
         deprecationErrors: true,
-      },
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
+      }
     });
     
     debugInfo.step = 'connecting to mongodb';
