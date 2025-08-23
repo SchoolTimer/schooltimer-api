@@ -1,0 +1,27 @@
+{
+    "name": "schooltimer-api",
+    "version": "1.0.0",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "dotenv": "^16.6.1",
+        "mongodb": "^5.9.2",
+        "node-fetch": "^2.7.0",
+        "vercel": "^46.0.2"
+    },
+    "description": "",
+    "main": "index.js",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/SchoolTimer/schooltimer-api.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "bugs": {
+        "url": "https://github.com/SchoolTimer/schooltimer-api/issues"
+    },
+    "homepage": "https://github.com/SchoolTimer/schooltimer-api#readme"
+}
