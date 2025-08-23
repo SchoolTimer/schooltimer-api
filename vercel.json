@@ -6,14 +6,8 @@
       { "src": "scrapers/foodmenu.js", "use": "@vercel/node" }
     ],
     "routes": [
-      { "src": "/api/test", "dest": "/api/test.js" },
-      { "src": "/api/debug", "dest": "/api/debug.js" },
-      { "src": "/api/data-api", "dest": "/api/data-api.js" },
-      { "src": "/api/supabase-data", "dest": "/api/supabase-data.js" },
-      { "src": "/api/supabase-foodmenu", "dest": "/api/supabase-foodmenu.js" },
-      { "src": "/api/daycycle", "dest": "/api/daycycle.js" },
-      { "src": "/api/foodmenu", "dest": "/api/foodmenu.js" },
-      { "src": "/api/data", "dest": "/api/data.js" }
+      { "src": "/api/data", "dest": "/api/supabase-data.js" },
+      { "src": "/api/foodmenu", "dest": "/api/supabase-foodmenu.js" },
     ],
     "crons": [
       { "path": "/scrapers/daycycle.py", "schedule": "0 8 * * *" },
