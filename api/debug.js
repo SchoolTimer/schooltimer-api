@@ -10,7 +10,16 @@ module.exports = async (req, res) => {
 
   try {
     debugInfo.step = 'creating client';
-    const client = new MongoClient(process.env.MONGODB_URI);
+    const client = new MongoClient(process.env.MONGODB_URI, {
+      serverApi: {
+        version: '1',
+        strict: true,
+        deprecationErrors: true,
+      },
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
     
     debugInfo.step = 'connecting to mongodb';
     await client.connect();

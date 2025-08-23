@@ -1,7 +1,16 @@
 const { MongoClient } = require('mongodb');
 
 module.exports = async (req, res) => {
-  const client = new MongoClient(process.env.MONGODB_URI);
+  const client = new MongoClient(process.env.MONGODB_URI, {
+    serverApi: {
+      version: '1',
+      strict: true,
+      deprecationErrors: true,
+    },
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  });
   try {
     await client.connect();
     const db = client.db('schooltimer');
