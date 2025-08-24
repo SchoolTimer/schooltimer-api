@@ -3,10 +3,6 @@ const { promisify } = require('util');
 const execPromise = promisify(exec);
 
 module.exports = async (req, res) => {
-  if (req.headers['user-agent'] !== 'vercel-cron/1.0') {
-    return res.status(403).json({ error: 'Unauthorized' });
-  }
-
   try {
     const { stdout, stderr } = await execPromise('node scrapers/foodmenu.js');
     console.log('foodmenu.js output:', stdout);
