@@ -13,7 +13,7 @@
     { "src": "/api/cron-foodmenu", "dest": "/api/cron-foodmenu.js" }
   ],
   "crons": [
-    { "path": "/api/cron-daycycle", "schedule": "57 7 * * *" },
-    { "path": "/api/cron-foodmenu", "schedule": "57 7 * * *" }
+    { "path": "/api/cron-daycycle", "schedule": "06 8 * * *" },
+    { "path": "/api/cron-foodmenu", "schedule": "06 8 * * *" }
   ]
 }
