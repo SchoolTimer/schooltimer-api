@@ -12,19 +12,21 @@ async function getGraphQLData() {
   var year = dateObj.getUTCFullYear();
 
   const query = `
-    site0: menuType(id: "5d13bb11534a134661b51588") {
-      name
-      items(start_date: "${month}/${day}/${year}", end_date: "${month}/${day}/${year}") {
-        product {
-          name
+    query {
+      site0: menuType(id: "5d13bb11534a134661b51588") {
+        name
+        items(start_date: "${month}/${day}/${year}", end_date: "${month}/${day}/${year}") {
+          product {
+            name
+          }
         }
       }
-    }
-    site1: menuType(id: "5d011496534a13a13b2dff32") {
-      name
-      items(start_date: "${month}/${day}/${year}", end_date: "${month}/${day}/${year}") {
-        product {
-          name
+      site1: menuType(id: "5d011496534a13a13b2dff32") {
+        name
+        items(start_date: "${month}/${day}/${year}", end_date: "${month}/${day}/${year}") {
+          product {
+            name
+          }
         }
       }
     }
