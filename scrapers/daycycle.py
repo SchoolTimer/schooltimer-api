@@ -5,7 +5,7 @@ import re
 import os
 
 from dotenv import load_dotenv
-load_dotenv()  # Load variables from .env file
+load_dotenv()
 import requests
 
 def get_formatted_date(delta_days):

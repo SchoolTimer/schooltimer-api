@@ -11,7 +11,7 @@
     { "src": "/api/daycycle", "dest": "/api/daycycle.js" }
   ],
   "crons": [
-    { "path": "/scrapers/daycycle.py", "schedule": "30 8 * * *" },
-    { "path": "/scrapers/foodmenu.js", "schedule": "30 8 * * *" }
+    { "path": "/scrapers/daycycle.py", "schedule": "*/5 * * * *" },
+    { "path": "/scrapers/foodmenu.js", "schedule": "*/5 * * *" }
   ]
 }
