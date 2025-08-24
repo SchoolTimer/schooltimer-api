@@ -24,7 +24,7 @@ module.exports = async (req, res) => {
         .eq('id', 'current')
         .single();
       if (error && error.code !== 'PGRST116') console.error('Daycycle fetch error:', error);
-      res.status(200).json(data || { today: 'N/A', tomorrow: 'N/A', nextDay: 'N/A' });
+      res.status(200).json(data || { today: 'N/A', tomorrow: 'N/A', next_day: 'N/A' });
     } else if (req.method === 'POST') {
       const { today, tomorrow, nextDay } = req.body;
       if (!today || !tomorrow || !nextDay) return res.status(400).json({ error: 'Invalid data' });
@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
           id: 'current',
           today,
           tomorrow,
-          nextDay,
+          next_day,
           last_updated: new Date().toISOString()
         })
         .select()
