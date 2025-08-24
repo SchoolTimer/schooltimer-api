@@ -8,10 +8,12 @@
   "routes": [
     { "src": "/api/data", "dest": "/api/data.js" },
     { "src": "/api/foodmenu", "dest": "/api/foodmenu.js" },
-    { "src": "/api/daycycle", "dest": "/api/daycycle.js" }
+    { "src": "/api/daycycle", "dest": "/api/daycycle.js" },
+    { "src": "/api/cron-daycycle", "dest": "/api/cron-daycycle.js" },
+    { "src": "/api/cron-foodmenu", "dest": "/api/cron-foodmenu.js" }
   ],
   "crons": [
-    { "path": "/scrapers/daycycle.py", "schedule": "30 8 * * *" },
-    { "path": "/scrapers/foodmenu.js", "schedule": "30 8 * * *" }
+    { "path": "/api/cron-daycycle", "schedule": "30 8 * * *" },
+    { "path": "/api/cron-foodmenu", "schedule": "30 8 * * *" }
   ]
 }
