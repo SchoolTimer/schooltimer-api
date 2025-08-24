@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
     }
 
     res.status(200).json({
-      daycycle: daycycle || { today: 'N/A', tomorrow: 'N/A', next_day: 'N/A' },
+      daycycle: daycycle || { today: 'N/A', tomorrow: 'N/A', nextDay: 'N/A' },
       foodmenu: foodmenu || { breakfast: [], lunch: [] },
       timestamp: new Date().toISOString()
     });

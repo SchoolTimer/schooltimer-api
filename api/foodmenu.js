@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 module.exports = async (req, res) => {
-  const apiKey = req.headers['api-key'];
+  const apiKey = req.headers['API_KEY'];
 
   if (!apiKey || apiKey !== process.env.API_KEY) {
     return res.status(403).json({ error: 'Invalid API key' });
