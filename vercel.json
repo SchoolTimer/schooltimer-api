@@ -11,7 +11,7 @@
     { "src": "/api/daycycle", "dest": "/api/daycycle.js" }
   ],
   "crons": [
-    { "path": "/api/daycycle", "schedule": "26 7 * * *" },
-    { "path": "/api/foodmenu", "schedule": "26 7 * * *" }
+    { "path": "/api/daycycle", "schedule": "29 3 * * *" },
+    { "path": "/api/foodmenu", "schedule": "29 3 * * *" }
   ]
 }
