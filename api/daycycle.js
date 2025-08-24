@@ -26,8 +26,8 @@ module.exports = async (req, res) => {
       if (error && error.code !== 'PGRST116') console.error('Daycycle fetch error:', error);
       res.status(200).json(data || { today: 'N/A', tomorrow: 'N/A', next_day: 'N/A' });
     } else if (req.method === 'POST') {
-      const { today, tomorrow, nextDay } = req.body;
-      if (!today || !tomorrow || !nextDay) return res.status(400).json({ error: 'Invalid data' });
+      const { today, tomorrow, next_day } = req.body;
+      if (!today || !tomorrow || !next_day) return res.status(400).json({ error: 'Invalid data' });
       const { data, error } = await supabase
         .from('daycycles')
         .upsert({
