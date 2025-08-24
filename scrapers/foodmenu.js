@@ -30,31 +30,18 @@ async function getGraphQLData() {
     }
   `;
 
-  try {
-    const response = await fetch(GraphQLAPI, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({ query }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`GraphQL API failed: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    // Debug: Log the response structure
-    console.log('GraphQL Response:', JSON.stringify(data, null, 2));
-    
-    if (!data.data) {
-      throw new Error('GraphQL response missing data property');
-    }
-
-    let breakfastUnfiltered = data.data.site0?.items || [];
-    let lunchUnfiltered = data.data.site1?.items || [];
+  await fetch(GraphQLAPI, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ query }),
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      let breakfastUnfiltered = data.data.site0.items || [];
+      let lunchUnfiltered = data.data.site1.items || [];
 
       breakfastUnfiltered = breakfastUnfiltered.filter(item => item && item.product.name !== "or");
       lunchUnfiltered = lunchUnfiltered.filter(item => item && item.product.name !== "or");
@@ -70,10 +57,7 @@ async function getGraphQLData() {
       };
 
       updateDB(deploymentReadyData);
-    } catch (error) {
-      console.error('Error in getGraphQLData:', error);
-      throw error;
-    }
+    });
 }
 
 async function updateDB(GraphQLData) {
