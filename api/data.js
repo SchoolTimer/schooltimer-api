@@ -1,50 +1,69 @@
-const { createClient } = require('@supabase/supabase-js');
+const { createClient } = require("@supabase/supabase-js");
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables');
+  console.error("Missing Supabase environment variables");
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 module.exports = async (req, res) => {
+  // CORS headers for browser requests
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
   try {
     // Get daycycle data
     const { data: daycycle, error: daycycleError } = await supabase
-      .from('daycycles')
-      .select('*')
-      .eq('id', 'current')
+      .from("daycycles")
+      .select("*")
+      .eq("id", "current")
       .single();
 
-    if (daycycleError && daycycleError.code !== 'PGRST116') {
-      console.error('Daycycle error:', daycycleError);
+    if (daycycleError && daycycleError.code !== "PGRST116") {
+      console.error("Daycycle error:", daycycleError);
     }
 
     // Get foodmenu data
     const { data: foodmenu, error: foodmenuError } = await supabase
-      .from('foodmenus')
-      .select('*')
-      .eq('id', 'current')
+      .from("foodmenus")
+      .select("*")
+      .eq("id", "current")
       .single();
 
-    if (foodmenuError && foodmenuError.code !== 'PGRST116') {
-      console.error('Foodmenu error:', foodmenuError);
+    if (foodmenuError && foodmenuError.code !== "PGRST116") {
+      console.error("Foodmenu error:", foodmenuError);
     }
 
     res.status(200).json({
-      daycycle: daycycle || { id: 'current', today: 'N/A', tomorrow: 'N/A', next_day: 'N/A', last_updated: null },
-      foodmenu: foodmenu || { id: 'current', breakfast: [], lunch: [], last_updated: null },
-      timestamp: new Date().toISOString()
+      daycycle: daycycle || {
+        id: "current",
+        today: "N/A",
+        tomorrow: "N/A",
+        next_day: "N/A",
+        last_updated: null,
+      },
+      foodmenu: foodmenu || {
+        id: "current",
+        breakfast: [],
+        lunch: [],
+        last_updated: null,
+      },
+      timestamp: new Date().toISOString(),
     });
-
   } catch (err) {
-    console.error('Supabase API Error:', err);
-    res.status(500).json({ 
-      error: 'Database error', 
+    console.error("Supabase API Error:", err);
+    res.status(500).json({
+      error: "Database error",
       details: err.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 };
