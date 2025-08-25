@@ -7,10 +7,12 @@
   ],
   "routes": [
     { "src": "/api/data", "dest": "/api/data.js" },
-    { "src": "/api/foodmenu", "dest": "/api/foodmenu.js" }
+    { "src": "/api/foodmenu", "dest": "/api/foodmenu.js" },
+    { "src": "/api/cron-daycycle", "dest": "/api/cron-daycycle.js" },
+    { "src": "/api/cron-foodmenu", "dest": "/api/cron-foodmenu.js" }
   ],
   "crons": [
-    { "path": "/api/cron-daycycle", "schedule": "01 4 * * *" },
-    { "path": "/api/cron-foodmenu", "schedule": "01 4 * * *" }
+    { "path": "/api/cron-daycycle", "schedule": "02 4 * * *" },
+    { "path": "/api/cron-foodmenu", "schedule": "02 4 * * *" }
   ]
 }
