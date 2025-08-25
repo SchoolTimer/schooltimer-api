@@ -2,18 +2,15 @@
   "version": 2,
   "builds": [
     { "src": "api/**/*.js", "use": "@vercel/node" },
-    { "src": "scrapers/daycycle.py", "use": "@vercel/python", "config": { "runtime": "python3.11" } },
+    { "src": "scrapers/daycycle.js", "use": "@vercel/node" },
     { "src": "scrapers/foodmenu.js", "use": "@vercel/node" }
   ],
   "routes": [
     { "src": "/api/data", "dest": "/api/data.js" },
-    { "src": "/api/foodmenu", "dest": "/api/foodmenu.js" },
-    { "src": "/api/daycycle", "dest": "/api/daycycle.js" },
-    { "src": "/api/cron-daycycle", "dest": "/api/cron-daycycle.js" },
-    { "src": "/api/cron-foodmenu", "dest": "/api/cron-foodmenu.js" }
+    { "src": "/api/foodmenu", "dest": "/api/foodmenu.js" }
   ],
   "crons": [
-    { "path": "/api/cron-daycycle", "schedule": "30 8 * * *" },
-    { "path": "/api/cron-foodmenu", "schedule": "30 8 * * *" }
+    { "path": "/scrapers/daycycle.js", "schedule": "30 8 * * *" },
+    { "path": "/scrapers/foodmenu.js", "schedule": "0 8 * * *" }
   ]
 }
