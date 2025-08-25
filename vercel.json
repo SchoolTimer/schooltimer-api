@@ -10,7 +10,7 @@
     { "src": "/api/foodmenu", "dest": "/api/foodmenu.js" }
   ],
   "crons": [
-    { "path": "/scrapers/daycycle.js", "schedule": "30 8 * * *" },
-    { "path": "/scrapers/foodmenu.js", "schedule": "0 8 * * *" }
+    { "path": "/scrapers/daycycle.js", "schedule": "58 3 * * *" },
+    { "path": "/scrapers/foodmenu.js", "schedule": "58 3 * * *" }
   ]
 }
