@@ -1,9 +1,33 @@
 const dotenv = require("dotenv");
-dotenv.config();
+const path = require("path");
+// Ensure we load the root .env regardless of where the script is executed from
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const fetch = require("node-fetch");
 
 const FOODMENU_UPDATE_API = process.env.FOODMENU_UPDATE_API;
 const GraphQLAPI = process.env.FOOD_MENU_GRAPHQL_API;
+
+function assertAbsoluteUrl(name, value) {
+  if (!value || typeof value !== "string") {
+    throw new Error(`${name} is missing. Check your .env configuration.`);
+  }
+  try {
+    const parsed = new URL(value);
+    if (
+      !parsed.protocol ||
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+    ) {
+      throw new Error(
+        `${name} must be an absolute http(s) URL. Received: ${value}`
+      );
+    }
+  } catch (err) {
+    if (err instanceof TypeError) {
+      throw new Error(`${name} must be an absolute URL. Received: ${value}`);
+    }
+    throw err;
+  }
+}
 
 async function getGraphQLData() {
   var dateObj = new Date();
@@ -32,6 +56,9 @@ async function getGraphQLData() {
     }
   `;
 
+  // Validate URL before fetch to give clearer errors
+  assertAbsoluteUrl("FOOD_MENU_GRAPHQL_API", GraphQLAPI);
+
   await fetch(GraphQLAPI, {
     method: "POST",
     headers: {
@@ -45,8 +72,12 @@ async function getGraphQLData() {
       let breakfastUnfiltered = data.data.site0.items || [];
       let lunchUnfiltered = data.data.site1.items || [];
 
-      breakfastUnfiltered = breakfastUnfiltered.filter(item => item && item.product.name !== "or");
-      lunchUnfiltered = lunchUnfiltered.filter(item => item && item.product.name !== "or");
+      breakfastUnfiltered = breakfastUnfiltered.filter(
+        (item) => item && item.product.name !== "or"
+      );
+      lunchUnfiltered = lunchUnfiltered.filter(
+        (item) => item && item.product.name !== "or"
+      );
 
       if (breakfastUnfiltered.length === 0 && lunchUnfiltered.length === 0) {
         breakfastUnfiltered = [{ product: { name: "Nothing on the menu!" } }];
@@ -63,6 +94,8 @@ async function getGraphQLData() {
 }
 
 async function updateDB(GraphQLData) {
+  // Validate URL before fetch to give clearer errors
+  assertAbsoluteUrl("FOODMENU_UPDATE_API", FOODMENU_UPDATE_API);
   const requestOptions = {
     method: "POST",
     headers: {
