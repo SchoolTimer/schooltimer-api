@@ -17,9 +17,5 @@
         "Access-Control-Allow-Headers": "Content-Type, Accept, api-key"
       }
     }
-  ],
-  "crons": [
-    { "path": "/scrapers/daycycle.js", "schedule": "15 4 * * *" },
-    { "path": "/scrapers/foodmenu.js", "schedule": "15 4 * * *" }
   ]
 }
