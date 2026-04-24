@@ -20,26 +20,32 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Get daycycle data
-    const { data: daycycle, error: daycycleError } = await supabase
-      .from("daycycles")
-      .select("*")
-      .eq("id", "current")
-      .single();
+    // Fetch all tables in parallel
+    const [
+      { data: daycycle,       error: daycycleError },
+      { data: foodmenu,       error: foodmenuError },
+      { data: bellSchedules,  error: bellError },
+      { data: schoolDates,    error: datesError },
+    ] = await Promise.all([
+      supabase.from("daycycles").select("*").eq("id", "current").single(),
+      supabase.from("foodmenus").select("*").eq("id", "current").single(),
+      supabase.from("bell_schedules").select("*").order("letter"),
+      supabase.from("school_dates").select("*").order("id", { ascending: false }).limit(1).single(),
+    ]);
 
-    if (daycycleError && daycycleError.code !== "PGRST116") {
-      console.error("Daycycle error:", daycycleError);
-    }
+    if (daycycleError && daycycleError.code !== "PGRST116") console.error("Daycycle error:", daycycleError);
+    if (foodmenuError && foodmenuError.code !== "PGRST116") console.error("Foodmenu error:", foodmenuError);
+    if (bellError     && bellError.code     !== "PGRST116") console.error("Bell schedules error:", bellError);
+    if (datesError    && datesError.code    !== "PGRST116") console.error("School dates error:", datesError);
 
-    // Get foodmenu data
-    const { data: foodmenu, error: foodmenuError } = await supabase
-      .from("foodmenus")
-      .select("*")
-      .eq("id", "current")
-      .single();
-
-    if (foodmenuError && foodmenuError.code !== "PGRST116") {
-      console.error("Foodmenu error:", foodmenuError);
+    // Shape bell schedules into a keyed map { A: [...slots], B: [...slots], ... }
+    const schedules = {};
+    for (const row of (bellSchedules || [])) {
+      schedules[row.letter] = {
+        name: row.name,
+        slots: row.slots,
+        last_updated: row.last_updated,
+      };
     }
 
     res.status(200).json({
@@ -56,6 +62,8 @@ module.exports = async (req, res) => {
         lunch: [],
         last_updated: null,
       },
+      schedules,
+      school_dates: schoolDates || null,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
