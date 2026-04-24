@@ -1,162 +1,144 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
-
 const dotenv = require("dotenv");
 const path = require("path");
 
-// Load .env from the parent directory (project root)
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
-function getFormattedDate(deltaDays) {
-  // Format date as "Tuesday, August 25" (no leading zero)
+// Returns YYYY-MM-DD for today + deltaDays (local time)
+function dateStr(deltaDays) {
   const d = new Date();
   d.setDate(d.getDate() + deltaDays);
-  const dayName = d.toLocaleDateString("en-US", { weekday: "long" });
-  const monthName = d.toLocaleDateString("en-US", { month: "long" });
-  const day = d.getDate();
-  return `${dayName}, ${monthName} ${day}`;
+  return d.toISOString().split("T")[0];
 }
 
-function extractSchedule(eventString, currentDay) {
-  const scheduleMatch = eventString.match(/HS - ([ABCD]) Schedule/);
-  if (
-    eventString.includes("HOLIDAY") ||
-    eventString.includes("School Closed")
-  ) {
-    return ["N/A", currentDay];
+// Returns "April 24" style string (no leading zero)
+function shortDate(deltaDays) {
+  const d = new Date();
+  d.setDate(d.getDate() + deltaDays);
+  const month = d.toLocaleDateString("en-US", { month: "long" });
+  return `${month} ${d.getDate()}`;
+}
+
+// Returns "Friday, April 24" style string (used in fsStateHasEvents text)
+function longDate(deltaDays) {
+  const d = new Date();
+  d.setDate(d.getDate() + deltaDays);
+  const weekday = d.toLocaleDateString("en-US", { weekday: "long" });
+  const month = d.toLocaleDateString("en-US", { month: "long" });
+  return `${weekday} ${month} ${d.getDate()}`;
+}
+
+function parseDayCycle(text) {
+  const isHoliday = /HOLIDAY|School Closed|Schools Closed/i.test(text);
+  if (isHoliday) return "N/A";
+
+  const dayMatch = text.match(/Day\s+([1-6])/i);
+  const schedMatch = text.match(/HS - ([ABCD]) Schedule/i);
+
+  if (dayMatch && schedMatch) {
+    return dayMatch[1] + schedMatch[1];
   }
-  if (eventString.includes("1st Day of School") && currentDay === null) {
-    currentDay = 1; // Assume first day of school is Day 1
-  }
-  if (scheduleMatch && currentDay !== null) {
-    return [`${currentDay}${scheduleMatch[1]}`, currentDay];
-  }
-  return ["N/A", currentDay];
+  return "N/A";
 }
 
 async function scrapeDayCycle() {
-  const url = "https://phs.parklandsd.org/about/calendar";
-  const today = new Date().toISOString().split("T")[0];
-  console.log(`Fetching data from: ${url} at ${today}`);
+  const today = dateStr(0);
+  console.log(`Scraping day cycle for ${today}`);
 
+  // Fetch the calendar grid for the current month via FinalSite elements API.
+  // Element 16751 is the main calendar grid on the PHS calendar page.
+  // Passing ?date= returns the month containing that date.
+  const url = `https://phs.parklandsd.org/fs/elements/16751?date=${today}`;
+  console.log(`Fetching: ${url}`);
+
+  let page;
   try {
-    const page = await axios.get(url);
-    if (page.status !== 200) {
-      console.log(`Failed to fetch page: Status ${page.status}, ${page.data}`);
-      process.exit(1);
-    }
-
-    const $ = cheerio.load(page.data);
-    const todayFormatted = getFormattedDate(0);
-    const tomorrow = getFormattedDate(1);
-    const dayAfterTomorrow = getFormattedDate(2);
-    const targetDates = [todayFormatted, tomorrow, dayAfterTomorrow];
-    const results = {};
-    targetDates.forEach((date) => (results[date] = "N/A"));
-
-    let currentDay = null; // Track the current day number
-    let schoolDays = 0; // Track school days to increment day number
-
-    $(".fsStateHasEvents").each((index, element) => {
-      const fullString = $(element).text().trim().replace(/\n/g, " ");
-      console.log(`Processing event: ${fullString}`);
-
-      // Check if this is a school day (not a holiday)
-      if (
-        !fullString.includes("HOLIDAY") &&
-        !fullString.includes("School Closed")
-      ) {
-        if (fullString.includes("1st Day of School")) {
-          currentDay = 1; // Reset to Day 1 for the first school day
-        } else if (currentDay !== null) {
-          schoolDays++;
-          currentDay = (schoolDays % 4) + 1; // Cycle through Day 1-4
-        }
-      }
-
-      // Extract schedule and update currentDay
-      const [result, updatedCurrentDay] = extractSchedule(
-        fullString,
-        currentDay
-      );
-      currentDay = updatedCurrentDay;
-
-      // Check for target dates in the event
-      targetDates.forEach((targetDate) => {
-        if (fullString.includes(targetDate) && result !== "N/A") {
-          results[targetDate] = result;
-        }
-      });
-    });
-
-    // Prepare data for API
-    const final1 = results[todayFormatted];
-    const final2 = results[tomorrow];
-    const final3 = results[dayAfterTomorrow];
-
-    console.log("\nScraped Results:");
-    console.log(`Today: ${final1}`);
-    console.log(`Tomorrow: ${final2}`);
-    console.log(`Day after tomorrow: ${final3}`);
-
-    // Push data to Vercel API
-    const apiUrl = process.env.DAYCYCLE_UPDATE_API;
-    console.log(`API URL: ${apiUrl}`);
-    const apiKey = process.env.API_KEY;
-
-    if (!apiUrl) {
-      console.log(
-        "Error: DAYCYCLE_UPDATE_API not set in environment variables"
-      );
-      process.exit(1);
-    }
-    if (!apiKey) {
-      console.log("Error: API_KEY not set in environment variables");
-      process.exit(1);
-    }
-
-    const payload = {
-      today: final1,
-      tomorrow: final2,
-      next_day: final3,
-    };
-
-    const headers = {
-      "Content-Type": "application/json",
-      "api-key": apiKey,
-    };
-
-    console.log(`Sending POST to ${apiUrl} with payload:`, payload);
-
-    try {
-      const response = await axios.post(apiUrl, payload, {
-        headers,
-        timeout: 10000,
-      });
-      console.log(`API Response Status: ${response.status}`);
-      console.log(`API Response Text: ${response.data}`);
-      if (response.status !== 200) {
-        console.log(
-          `Error: Update failed with status ${response.status}, response:`,
-          response.data
-        );
-      } else {
-        console.log("Day cycle updated successfully");
-      }
-    } catch (error) {
-      console.log(`Network or API error: ${error.message}`);
-    }
-
-    // Print local results
-    console.log("\nLocal Results:");
-    console.log(`Today: ${final1}`);
-    console.log(`Tomorrow: ${final2}`);
-    console.log(`Day after tomorrow: ${final3}`);
-  } catch (error) {
-    console.log(`Error fetching page: ${error.message}`);
+    page = await axios.get(url, { timeout: 15000 });
+  } catch (err) {
+    console.error(`Failed to fetch calendar: ${err.message}`);
     process.exit(1);
+  }
+
+  const $ = cheerio.load(page.data);
+
+  // Build a map of "Month Day" -> full text for each event day
+  const dayMap = {};
+  $(".fsStateHasEvents").each((_, el) => {
+    const text = $(el).text().trim().replace(/\s+/g, " ");
+    // Each element starts with the full date like "Friday April 24 ..."
+    // Extract "April 24" portion
+    const match = text.match(/(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+([A-Za-z]+ \d+)/);
+    if (match) {
+      dayMap[match[1]] = text;
+    }
+  });
+
+  console.log("Days found in calendar:", Object.keys(dayMap).join(", "));
+
+  const results = {
+    today: parseDayCycle(dayMap[shortDate(0)] || ""),
+    tomorrow: parseDayCycle(dayMap[shortDate(1)] || ""),
+    next_day: parseDayCycle(dayMap[shortDate(2)] || ""),
+  };
+
+  // If today/tomorrow/next_day spans a month boundary, fetch next month too
+  const needsNextMonth = results.tomorrow === "N/A" || results.next_day === "N/A";
+  if (needsNextMonth) {
+    const nextMonthDate = dateStr(5); // 5 days ahead guaranteed to be in next month if we're near end
+    const url2 = `https://phs.parklandsd.org/fs/elements/16751?date=${nextMonthDate}`;
+    console.log(`Also fetching next month: ${url2}`);
+    try {
+      const page2 = await axios.get(url2, { timeout: 15000 });
+      const $2 = cheerio.load(page2.data);
+      $2(".fsStateHasEvents").each((_, el) => {
+        const text = $2(el).text().trim().replace(/\s+/g, " ");
+        const match = text.match(/(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+([A-Za-z]+ \d+)/);
+        if (match && !dayMap[match[1]]) {
+          dayMap[match[1]] = text;
+        }
+      });
+      // Re-compute missing values
+      if (results.tomorrow === "N/A") results.tomorrow = parseDayCycle(dayMap[shortDate(1)] || "");
+      if (results.next_day === "N/A") results.next_day = parseDayCycle(dayMap[shortDate(2)] || "");
+    } catch (err) {
+      console.error(`Failed to fetch next month: ${err.message}`);
+    }
+  }
+
+  console.log("\nScraped Results:");
+  console.log(`Today (${shortDate(0)}):     ${results.today}`);
+  console.log(`Tomorrow (${shortDate(1)}):  ${results.tomorrow}`);
+  console.log(`Next day (${shortDate(2)}):  ${results.next_day}`);
+
+  // Push to API
+  const apiUrl = process.env.DAYCYCLE_UPDATE_API;
+  const apiKey = process.env.API_KEY;
+
+  if (!apiUrl) {
+    console.error("Error: DAYCYCLE_UPDATE_API not set");
+    process.exit(1);
+  }
+  if (!apiKey) {
+    console.error("Error: API_KEY not set");
+    process.exit(1);
+  }
+
+  console.log(`\nSending POST to ${apiUrl} with payload:`, results);
+  try {
+    const response = await axios.post(apiUrl, results, {
+      headers: { "Content-Type": "application/json", "api-key": apiKey },
+      timeout: 10000,
+    });
+    console.log(`API Response Status: ${response.status}`);
+    if (response.status === 200) {
+      console.log("Day cycle updated successfully");
+    } else {
+      console.error(`Update failed with status ${response.status}:`, response.data);
+    }
+  } catch (err) {
+    console.error(`Network or API error: ${err.message}`);
   }
 }
 
-// Run the scraper
 scrapeDayCycle();

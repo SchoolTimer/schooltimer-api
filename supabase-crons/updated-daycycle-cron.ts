@@ -1,246 +1,137 @@
 import { serve } from "https://deno.land/std@0.223.0/http/server.ts";
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts";
-// === Helpers ===
-function getDates() {
-  const dates = {};
-  [
-    "today",
-    "tomorrow",
-    "after"
-  ].forEach((key, idx)=>{
-    const d = new Date();
-    d.setDate(d.getDate() + idx);
-    const long = d.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric"
-    });
-    const noComma = long.replace(",", "");
-    dates[key] = {
-      long,
-      no_comma: noComma
-    };
-  });
-  return dates;
+
+// Returns YYYY-MM-DD for today + deltaDays
+function dateStr(deltaDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + deltaDays);
+  return d.toISOString().split("T")[0];
 }
-function extractDayNumber(text) {
-  for(let i = 1; i <= 6; i++){
-    if (text.includes(`Day ${i}`)) return String(i);
+
+// Returns "April 24" style string (no leading zero) for today + deltaDays
+function shortDate(deltaDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + deltaDays);
+  const month = d.toLocaleDateString("en-US", { month: "long" });
+  return `${month} ${d.getDate()}`;
+}
+
+function parseDayCycle(text: string): string {
+  if (/HOLIDAY|School Closed|Schools Closed/i.test(text)) return "N/A";
+  const dayMatch = text.match(/Day\s+([1-6])/i);
+  const schedMatch = text.match(/HS - ([ABCD]) Schedule/i);
+  if (dayMatch && schedMatch) return dayMatch[1] + schedMatch[1];
+  return "N/A";
+}
+
+// Fetch the FinalSite calendar grid element for the month containing `date`.
+// Element 16751 is the main calendar grid on the PHS calendar page.
+async function fetchMonthGrid(date: string): Promise<Record<string, string>> {
+  const url = `https://phs.parklandsd.org/fs/elements/16751?date=${date}`;
+  console.log(`Fetching calendar grid: ${url}`);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch grid: ${response.status}`);
   }
-  return null;
-}
-function nextDayNumber(n, step = 1) {
-  return String((parseInt(n) - 1 + step) % 6 + 1);
-}
-function detectSchedule(text, baseDay) {
-  const schedules = {
-    "HS-ASchedule": "A",
-    "HS-BSchedule": "B",
-    "HS-CSchedule": "C",
-    "HS-DSchedule": "D"
-  };
-  for(const key in schedules){
-    if (text.includes(key)) {
-      return baseDay + schedules[key];
-    }
+
+  const html = await response.text();
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  if (!doc) throw new Error("Failed to parse HTML");
+
+  const dayMap: Record<string, string> = {};
+  const dayboxes = doc.querySelectorAll(".fsStateHasEvents");
+  for (const el of dayboxes) {
+    const text = (el.textContent ?? "").replace(/\s+/g, " ").trim();
+    // Text starts like "Friday, April 24 Day 5 ..."
+    const match = text.match(
+      /(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+([A-Za-z]+ \d+)/
+    );
+    if (match) dayMap[match[1]] = text;
   }
-  return baseDay;
+  return dayMap;
 }
+
 // === Main Edge Function ===
-serve(async ()=>{
+serve(async () => {
   try {
-    const url = "https://phs.parklandsd.org/about/calendar";
-    console.log(`Fetching data from: ${url} at ${new Date().toISOString()}`);
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.error(`Failed to fetch page: Status ${response.status}`);
-      return new Response(JSON.stringify({
-        error: `Failed to fetch page: Status ${response.status}`
-      }), {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json"
+    const today = dateStr(0);
+    console.log(`Scraping day cycle for ${today}`);
+
+    let dayMap = await fetchMonthGrid(today);
+
+    // If tomorrow or next_day fall outside this month, fetch the next month too
+    const needsMore =
+      !dayMap[shortDate(1)] || !dayMap[shortDate(2)];
+    if (needsMore) {
+      const nextMonthDate = dateStr(5);
+      console.log(`Fetching next month grid for ${nextMonthDate}`);
+      try {
+        const nextMap = await fetchMonthGrid(nextMonthDate);
+        for (const [k, v] of Object.entries(nextMap)) {
+          if (!dayMap[k]) dayMap[k] = v;
         }
-      });
-    }
-    const html = await response.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
-    if (!doc) {
-      console.error("Failed to parse HTML");
-      return new Response(JSON.stringify({
-        error: "Failed to parse HTML"
-      }), {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
-    }
-    const dates = getDates();
-    let tag = null;
-    let cycleDay = null;
-    // Find base cycle day
-    const events = doc.querySelectorAll("article.fsCalendarBlockEvent");
-    for (const ev of events){
-      const text = ev.textContent?.trim() || "";
-      for(const key in dates){
-        if (text.includes(dates[key].long) || text.includes(dates[key].no_comma)) {
-          tag = key;
-          cycleDay = extractDayNumber(text);
-        }
+      } catch (e) {
+        console.error(`Failed to fetch next month: ${e}`);
       }
     }
-    if (!cycleDay) {
-      console.error("No cycle day found");
-      return new Response(JSON.stringify({
-        error: "No cycle day found"
-      }), {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
-    }
-    // Collect schedule strings
-    const scraped = {
-      today: "N/A",
-      tomorrow: "N/A",
-      after: "N/A"
+
+    const finals = {
+      today: parseDayCycle(dayMap[shortDate(0)] ?? ""),
+      tomorrow: parseDayCycle(dayMap[shortDate(1)] ?? ""),
+      next_day: parseDayCycle(dayMap[shortDate(2)] ?? ""),
     };
-    const divs = doc.querySelectorAll("div.fsStateHasEvents");
-    for (const div of divs){
-      const text = div.textContent?.replace(/\n/g, " ") || "";
-      if (!text.includes("Schedule")) continue;
-      for(const key in dates){
-        if (text.includes(dates[key].long) || text.includes(dates[key].no_comma)) {
-          scraped[key] = text;
-        }
-      }
-    }
-    // Resolve cycle numbers
-    let cycles = {};
-    if (tag === "today") {
-      cycles = {
-        today: cycleDay,
-        tomorrow: nextDayNumber(cycleDay, 1),
-        after: nextDayNumber(cycleDay, 2)
-      };
-    } else if (tag === "tomorrow") {
-      cycles = {
-        today: null,
-        tomorrow: cycleDay,
-        after: nextDayNumber(cycleDay, 1)
-      };
-    } else if (tag === "after") {
-      cycles = {
-        today: null,
-        tomorrow: null,
-        after: cycleDay
-      };
-    }
-    // Build final results
-    const finals = {};
-    for (const key of [
-      "today",
-      "tomorrow",
-      "after"
-    ]){
-      if (scraped[key] === "N/A" || !cycles[key]) {
-        finals[key] = "N/A";
-      } else {
-        const cleanText = scraped[key].replace(/ /g, "");
-        finals[key] = detectSchedule(cleanText, cycles[key]);
-      }
-    }
+
     console.log("Scraped Results:");
-    console.log(`Today: ${finals.today}`);
-    console.log(`Tomorrow: ${finals.tomorrow}`);
-    console.log(`Day after tomorrow: ${finals.after}`);
+    console.log(`Today (${shortDate(0)}):    ${finals.today}`);
+    console.log(`Tomorrow (${shortDate(1)}): ${finals.tomorrow}`);
+    console.log(`Next day (${shortDate(2)}): ${finals.next_day}`);
+
     // Push to API
     const apiUrl = Deno.env.get("DAYCYCLE_UPDATE_API");
     const apiKey = Deno.env.get("API_KEY");
+
     if (!apiUrl) {
-      console.error("Error: DAYCYCLE_UPDATE_API not set");
-      return new Response(JSON.stringify({
-        error: "DAYCYCLE_UPDATE_API not set"
-      }), {
+      return new Response(JSON.stringify({ error: "DAYCYCLE_UPDATE_API not set" }), {
         status: 500,
-        headers: {
-          "Content-Type": "application/json"
-        }
+        headers: { "Content-Type": "application/json" },
       });
     }
     if (!apiKey) {
-      console.error("Error: API_KEY not set");
-      return new Response(JSON.stringify({
-        error: "API_KEY not set"
-      }), {
+      return new Response(JSON.stringify({ error: "API_KEY not set" }), {
         status: 500,
-        headers: {
-          "Content-Type": "application/json"
-        }
+        headers: { "Content-Type": "application/json" },
       });
     }
-    const payload = {
-      today: finals.today,
-      tomorrow: finals.tomorrow,
-      next_day: finals.after
-    };
-    const headers = {
-      "Content-Type": "application/json",
-      "api-key": apiKey
-    };
-    console.log(`Sending POST to ${apiUrl} with payload: ${JSON.stringify(payload)}`);
-    try {
-      const apiResp = await fetch(apiUrl, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload)
-      });
-      const text = await apiResp.text();
-      console.log(`API Response Status: ${apiResp.status}`);
-      console.log(`API Response Text: ${text}`);
-      if (!apiResp.ok) {
-        return new Response(JSON.stringify({
-          error: `Update failed ${apiResp.status}`
-        }), {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json"
-          }
-        });
-      }
-    } catch (e) {
-      console.error(`Network/API error: ${e}`);
-      return new Response(JSON.stringify({
-        error: `Network/API error: ${e}`
-      }), {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
+
+    console.log(`Sending POST to ${apiUrl} with payload:`, JSON.stringify(finals));
+
+    const apiResp = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "api-key": apiKey },
+      body: JSON.stringify(finals),
+    });
+
+    const respText = await apiResp.text();
+    console.log(`API Response: ${apiResp.status} ${respText}`);
+
+    if (!apiResp.ok) {
+      return new Response(
+        JSON.stringify({ error: `Update failed: ${apiResp.status}` }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
     }
-    return new Response(JSON.stringify({
-      today: finals.today,
-      tomorrow: finals.tomorrow,
-      day_after_tomorrow: finals.after
-    }), {
+
+    return new Response(JSON.stringify(finals), {
       status: 200,
-      headers: {
-        "Content-Type": "application/json"
-      }
+      headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error(`Unexpected error: ${e}`);
-    return new Response(JSON.stringify({
-      error: `Unexpected error: ${e}`
-    }), {
+    return new Response(JSON.stringify({ error: `Unexpected error: ${e}` }), {
       status: 500,
-      headers: {
-        "Content-Type": "application/json"
-      }
+      headers: { "Content-Type": "application/json" },
     });
   }
 });
