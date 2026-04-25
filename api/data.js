@@ -22,21 +22,24 @@ module.exports = async (req, res) => {
   try {
     // Fetch all tables in parallel
     const [
-      { data: daycycle,       error: daycycleError },
-      { data: foodmenu,       error: foodmenuError },
-      { data: bellSchedules,  error: bellError },
-      { data: schoolDates,    error: datesError },
+      { data: daycycle,        error: daycycleError },
+      { data: foodmenu,        error: foodmenuError },
+      { data: bellSchedules,   error: bellError },
+      { data: schoolDates,     error: datesError },
+      { data: customSchedule,  error: customError },
     ] = await Promise.all([
       supabase.from("daycycles").select("*").eq("id", "current").single(),
       supabase.from("foodmenus").select("*").eq("id", "current").single(),
       supabase.from("bell_schedules").select("*").order("letter"),
       supabase.from("school_dates").select("*").order("id", { ascending: false }).limit(1).single(),
+      supabase.from("custom_schedules").select("*").eq("enabled", true).maybeSingle(),
     ]);
 
     if (daycycleError && daycycleError.code !== "PGRST116") console.error("Daycycle error:", daycycleError);
     if (foodmenuError && foodmenuError.code !== "PGRST116") console.error("Foodmenu error:", foodmenuError);
     if (bellError     && bellError.code     !== "PGRST116") console.error("Bell schedules error:", bellError);
     if (datesError    && datesError.code    !== "PGRST116") console.error("School dates error:", datesError);
+    if (customError   && customError.code   !== "PGRST116") console.error("Custom schedule error:", customError);
 
     // Shape bell schedules into a keyed map { A: [...slots], B: [...slots], ... }
     const schedules = {};
@@ -46,6 +49,20 @@ module.exports = async (req, res) => {
         slots: row.slots,
         last_updated: row.last_updated,
       };
+    }
+
+    // If a custom schedule is enabled, include it as a top-level entry and
+    // also expose it under schedules.CUSTOM so consumers that key by letter
+    // can pick it up easily.
+    let custom = null;
+    if (customSchedule) {
+      custom = {
+        id: customSchedule.id,
+        name: customSchedule.name,
+        slots: customSchedule.slots,
+        last_updated: customSchedule.last_updated,
+      };
+      schedules.CUSTOM = { name: custom.name, slots: custom.slots, last_updated: custom.last_updated };
     }
 
     res.status(200).json({
@@ -63,6 +80,7 @@ module.exports = async (req, res) => {
         last_updated: null,
       },
       schedules,
+      custom_schedule: custom,
       school_dates: schoolDates || null,
       timestamp: new Date().toISOString(),
     });
